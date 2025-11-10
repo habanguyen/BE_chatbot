@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: chatbot_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: hanb123123@
+      MYSQL_DATABASE: shopdb
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  backend:
+    build: .
+    container_name: ai_chatbot_back
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: hanb123123@
+      DB_NAME: shopdb
+    volumes:
+      - .:/usr/src/app
+    command: ["npm", "start"]
+
+volumes:
+  db_data:
