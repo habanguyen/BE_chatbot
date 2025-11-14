@@ -7,6 +7,17 @@ export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/
   const [loading, setLoading] = useState(false);
   const messagesRef = useRef(null);
 
+  // Greeting message khi mở chatbot lần đầu
+  useEffect(() => {
+    if (open && messages.length === 0) {
+      setLoading(true);
+      // Gửi tin nhắn rỗng để trigger greeting response từ backend
+      setTimeout(() => {
+        sendMessage("xin chào");
+      }, 300);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (messagesRef.current) messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
   }, [messages, open]);
@@ -15,9 +26,12 @@ export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/
 
   async function sendMessage(rawText) {
     const text = String(rawText || "").trim();
-    if (!text) return;
+    if (!text && messages.length > 0) return; // Không gửi tin nhắn trống (trừ greeting)
 
-    setMessages((m) => [...m, { from: "user", text }]);
+    // Chỉ hiển thị user message nếu không phải greeting lần đầu
+    if (text && messages.length > 0) {
+      setMessages((m) => [...m, { from: "user", text }]);
+    }
     setInput("");
     setLoading(true);
 
