@@ -22,16 +22,13 @@ export async function handleChat(req, res) {
     const nlu = analyzeMessage(message);    // 2) Xử lý theo intent
     switch (nlu.intent) {
       case "find_product": {
-        // filters từ NLU
-  const filters = nlu.filters || {};
-        // Nếu userInfo (height/weight) được gửi, gộp vào filters để có thể dùng
-        if (userInfo) filters.userInfo = userInfo;
+            // filters từ NLU
+          const filters = nlu.filters || {};
+            // Nếu userInfo (height/weight) được gửi, gộp vào filters để có thể dùng
+            if (userInfo) filters.userInfo = userInfo;
 
-  // Nếu NLU trả về keyword, map sang name để model có thể tìm kiếm theo name
-  const dbFilters = { ...filters };
-  if (!dbFilters.name && dbFilters.keyword) dbFilters.name = dbFilters.keyword;
-
-  const products = await searchProductsInDB(dbFilters);
+          // Pass keyword through directly; model will handle splitting and matching against name/description
+          const products = await searchProductsInDB(filters);
 
         if (!products || products.length === 0) {
           return res.json({

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 
-export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/chatbot", defaultOpen = false }) {
+export default function ChatbotWidget({ backendUrl = "/api/chatbot", defaultOpen = false }) {
   const [open, setOpen] = useState(Boolean(defaultOpen));
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
