@@ -28,6 +28,16 @@ CREATE TABLE products (
     FULLTEXT INDEX ft_name_desc (name, description)
 );
 
+-- 2.1️⃣ Bảng users (lưu session, lịch sử chat, preferences)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(128) UNIQUE,
+    messages JSON,
+    preferences JSON,
+    last_intent VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 3️⃣ Bảng đơn hàng
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
