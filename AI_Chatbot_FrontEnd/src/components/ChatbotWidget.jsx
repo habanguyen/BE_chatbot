@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
+import "./ChatbotWidget.css";
 
-export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/chatbot", defaultOpen = false }) {
+export default function ChatbotWidget({ backendUrl = "/api/chatbot", defaultOpen = false, avatarUrl = null, width = 320 }) {
   const [open, setOpen] = useState(Boolean(defaultOpen));
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -12,6 +13,48 @@ export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/
   }, [messages, open]);
 
   const toggleOpen = () => setOpen((v) => !v);
+
+  // When widget is opened for the first time (no messages), request a welcome/greeting
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchWelcome() {
+      try {
+        setLoading(true);
+        const res = await fetch(backendUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: "chào" }),
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status}: ${txt}`);
+        }
+
+        const data = await res.json();
+        if (cancelled) return;
+        const botReply = (data && data.reply) || "(Không có phản hồi)";
+        if (data && Array.isArray(data.data) && data.data.length > 0) {
+          setMessages((m) => [...m, { from: "bot", text: botReply, data: data.data }]);
+        } else {
+          setMessages((m) => [...m, { from: "bot", text: botReply }]);
+        }
+      } catch (err) {
+        console.error("ChatbotWidget welcome error:", err);
+        setMessages((m) => [...m, { from: "system", text: "Lỗi khi kết nối server: " + err.message }]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    if (open && messages.length === 0) {
+      fetchWelcome();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   async function sendMessage(rawText) {
     const text = String(rawText || "").trim();
@@ -35,15 +78,14 @@ export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/
 
       const data = await res.json();
       const botReply = (data && data.reply) || "(Không có phản hồi)";
-      // If backend returns structured data (suggestions), attach it to the bot message
+
       if (data && Array.isArray(data.data) && data.data.length > 0) {
         setMessages((m) => [...m, { from: "bot", text: botReply, data: data.data }]);
       } else {
         setMessages((m) => [...m, { from: "bot", text: botReply }]);
       }
     } catch (err) {
-      console.error("ChatbotWidget send error:", err);
-      setMessages((m) => [...m, { from: "system", text: "Lỗi khi kết nối server: " + err.message }]);
+      setMessages((m) => [...m, { from: "system", text: "Lỗi server: " + err.message }]);
     } finally {
       setLoading(false);
     }
@@ -54,50 +96,76 @@ export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/
     sendMessage(input);
   }
 
+// tiny default avatar (robot) as data URL
+const defaultAvatar = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'><rect rx='4' width='24' height='24' fill='%230b79d0'/><circle cx='8.5' cy='9' r='1.2' fill='%23fff'/><circle cx='15.5' cy='9' r='1.2' fill='%23fff'/><rect x='9' y='14' width='6' height='1.6' rx='0.8' fill='%23fff'/></svg>`;
+
+// Ưu tiên: avatarUrl (props) → public `/avatar_chatbot.png` → fallback SVG
+const avatar = avatarUrl || '/avatar_chatbot.jpg' || defaultAvatar;
+
+
   return (
-    <div style={containerStyle}>
-      <div style={widgetStyle}>
-        <div style={headerStyle} onClick={toggleOpen}>
-          <div style={{ fontWeight: "bold" }}>Chatbot</div>
-          <div style={{ fontSize: 12 }}>{open ? "–" : "+"}</div>
+    <div className="chat-container">
+      <div className="chat-widget" style={{ width: width }}>
+        <div className="chat-header" onClick={toggleOpen}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <img src={avatar} alt="bot" className="chat-header-avatar" />
+            <div className="chat-title">Trợ lý AI</div>
+          </div>
+          <div className="chat-toggle">{open ? "–" : "+"}</div>
         </div>
 
         {open && (
-          <div style={bodyStyle}>
-            <div ref={messagesRef} style={messagesStyle}>
-              {messages.length === 0 && <div style={emptyStyle}>Chào! Gõ câu hỏi để bắt đầu.</div>}
-              {messages.map((m, idx) => (
-                <div key={idx} style={m.from === "user" ? userMsgStyle : m.from === "bot" ? botMsgStyle : systemMsgStyle}>
-                  <div>{m.text}</div>
-                  {m.from === 'bot' && Array.isArray(m.data) && m.data.length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                      {m.data.slice(0, 10).map((p) => (
-                        <div key={p.id || p.sku || Math.random()} style={prodCardStyle}>
-                          <div style={{ fontWeight: 600 }}>{p.name}</div>
-                          <div style={{ fontSize: 12, color: '#666' }}>{p.brand} • {p.category}</div>
-                          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontWeight: 700 }}>{p.price ? formatPrice(p.price) : ''}</div>
-                            <div style={{ fontSize: 12, color: '#666' }}>Còn: {p.stock ?? 0}</div>
-                          </div>
+          <div className="chat-body">
+            <div ref={messagesRef} className="chat-messages">
+              {messages.length === 0 && (
+                <div className="chat-empty">Chào! Gõ câu hỏi để bắt đầu.</div>
+              )}
+
+              {messages.map((m, i) => (
+                m.from === 'bot' ? (
+                  <div key={i} className="msg-row-bot">
+                    <img src={avatar} alt="bot" className="msg-avatar" />
+                    <div className="msg-bubble-bot">
+                      <div>{m.text}</div>
+                      {Array.isArray(m.data) && m.data.length > 0 && (
+                        <div className="product-list">
+                          {m.data.slice(0, 10).map((p) => (
+                            <div className="product-card" key={p.id || p.sku || Math.random()}>
+                              <div className="product-name">{p.name}</div>
+                              <div className="product-meta">{p.brand} • {p.category}</div>
+                              <div className="product-bottom">
+                                <div className="product-price">{formatPrice(p.price)}</div>
+                                <div className="product-stock">Còn: {p.stock ?? 0}</div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : m.from === 'user' ? (
+                  <div key={i} className="msg-user">
+                    <div>{m.text}</div>
+                  </div>
+                ) : (
+                  <div key={i} className="msg-system">
+                    <div>{m.text}</div>
+                  </div>
+                )
               ))}
-              {loading && <div style={typingStyle}>Bot đang trả lời...</div>}
+
+              {loading && <div className="typing">Bot đang trả lời...</div>}
             </div>
 
-            <form onSubmit={handleSubmit} style={formStyle}>
+            <form onSubmit={handleSubmit} className="chat-form">
               <input
-                aria-label="message"
                 placeholder="Nhập câu hỏi..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                style={inputStyle}
                 disabled={loading}
+                className="chat-input"
               />
-              <button type="submit" style={sendBtnStyle} disabled={loading || !input.trim()}>
+              <button className="chat-send" disabled={loading || !input.trim()}>
                 Gửi
               </button>
             </form>
@@ -108,26 +176,14 @@ export default function ChatbotWidget({ backendUrl = "http://localhost:3000/api/
   );
 }
 
-const containerStyle = { position: "fixed", right: 20, bottom: 20, zIndex: 1000 };
-const widgetStyle = { width: 320, boxShadow: "0 6px 18px rgba(0,0,0,0.15)", borderRadius: 8, overflow: "hidden", fontFamily: "Segoe UI, Roboto, Helvetica, Arial, sans-serif" };
-const headerStyle = { background: "#0b79d0", color: "white", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" };
-const bodyStyle = { background: "white", maxHeight: 420, display: "flex", flexDirection: "column" };
-const messagesStyle = { padding: 12, overflowY: "auto", flex: 1 };
-const emptyStyle = { color: "#666", fontSize: 13 };
-const userMsgStyle = { alignSelf: "flex-end", background: "#e6f2ff", padding: "8px 10px", borderRadius: 10, margin: "6px 0", maxWidth: "80%" };
-const botMsgStyle = { alignSelf: "flex-start", background: "#f1f1f1", padding: "8px 10px", borderRadius: 10, margin: "6px 0", maxWidth: "80%" };
-const systemMsgStyle = { alignSelf: "center", background: "#fff3cd", padding: "6px 8px", borderRadius: 6, margin: "6px 0", fontSize: 12 };
-const typingStyle = { color: "#666", fontStyle: "italic", fontSize: 13, marginTop: 6 };
-const formStyle = { display: "flex", padding: 8, borderTop: "1px solid #eee" };
-const inputStyle = { flex: 1, padding: "8px 10px", borderRadius: 6, border: "1px solid #ddd", marginRight: 8 };
-const sendBtnStyle = { background: "#0b79d0", color: "white", border: "none", padding: "8px 12px", borderRadius: 6, cursor: "pointer" };
-const prodCardStyle = { border: '1px solid #eee', padding: 8, borderRadius: 6, marginBottom: 8, background: '#fff' };
-
 function formatPrice(v) {
   try {
     const n = Number(v);
     if (Number.isNaN(n)) return String(v);
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(n);
   } catch (e) {
     return String(v);
   }

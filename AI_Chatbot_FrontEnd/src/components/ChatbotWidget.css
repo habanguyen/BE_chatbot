@@ -1,0 +1,166 @@
+.chat-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+}
+
+.chat-widget {
+  width: 320px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: white;
+}
+
+.chat-header {
+  background: #0b79d0;
+  color: white;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.chat-header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+.chat-body {
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.chat-empty {
+  color: #666;
+  font-size: 13px;
+}
+
+.msg-user {
+  align-self: flex-end;
+  background: #e6f2ff;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin: 6px 0;
+  max-width: 80%;
+}
+
+.msg-bot {
+  align-self: flex-start;
+  background: #f1f1f1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin: 6px 0;
+  max-width: 80%;
+}
+
+.msg-row-bot {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.msg-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.msg-bubble-bot {
+  background: #f1f1f1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  max-width: calc(100% - 44px);
+}
+
+
+.msg-system {
+  align-self: center;
+  background: #fff3cd;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.typing {
+  color: #666;
+  font-style: italic;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.chat-form {
+  display: flex;
+  padding: 8px;
+  border-top: 1px solid #eee;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  margin-right: 8px;
+}
+
+.chat-send {
+  background: #0b79d0;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.product-list {
+  margin-top: 8px;
+}
+
+.product-card {
+  border: 1px solid #eee;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
+.product-name {
+  font-weight: 600;
+}
+
+.product-meta {
+  font-size: 12px;
+  color: #666;
+}
+
+.product-bottom {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.product-price {
+  font-weight: 700;
+}
+
+.product-stock {
+  font-size: 12px;
+  color: #666;
+}

@@ -28,6 +28,16 @@ CREATE TABLE products (
     FULLTEXT INDEX ft_name_desc (name, description)
 );
 
+-- 2.1️⃣ Bảng users (lưu session, lịch sử chat, preferences)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(128) UNIQUE,
+    messages JSON,
+    preferences JSON,
+    last_intent VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 3️⃣ Bảng đơn hàng
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,11 +67,23 @@ CREATE TABLE qa_documents (
 );
 
 -- 6️⃣ Dữ liệu mẫu: sản phẩm
-INSERT INTO products (sku, name, description, price, stock, category)
+INSERT INTO products (sku, name, description, price, stock, brand, gender, size, color, category)
 VALUES
-('SP001', 'Giày Nike Air Zoom', 'Giày thể thao Nike Air Zoom chính hãng', 2500000, 10, 'Giày thể thao'),
-('SP002', 'Giày Adidas Ultraboost', 'Giày chạy bộ Adidas Ultraboost', 3000000, 8, 'Giày thể thao'),
-('SP003', 'Dép Gucci nam', 'Dép thời trang cao cấp Gucci', 4500000, 5, 'Dép thời trang');
+('SP004', 'Giày Nike Revolution 6', 'Giày thể thao giá bình dân của Nike', 1200000, 15, 'Nike', 'Nam', '40-44', 'Đen', 'Giày thể thao'),
+('SP005', 'Giày Adidas Runfalcon', 'Giày chạy bộ giá bình dân của Adidas', 1100000, 12, 'Adidas', 'Nữ', '36-40', 'Trắng', 'Giày thể thao'),
+('SP006', 'Dép Crocs Classic', 'Dép unisex Crocs dễ chịu, casual', 500000, 20, 'Crocs', 'Unisex', '36-44', 'Xanh', 'Dép đi trong nhà'),
+('SP007', 'Giày Puma Smash v2', 'Giày thể thao bình dân Puma', 900000, 18, 'Puma', 'Nam', '39-43', 'Đỏ', 'Giày thể thao'),
+('SP008', 'Giày Gucci Ace', 'Giày cao cấp Gucci Ace sang trọng', 8500000, 4, 'Gucci', 'Nữ', '36-40', 'Trắng', 'Giày thời trang'),
+('SP009', 'Dép Hermes Oran', 'Dép Hermes cao cấp, phong cách', 7200000, 3, 'Hermes', 'Nữ', '36-41', 'Nâu', 'Dép thời trang'),
+('SP010', 'Sneaker Balenciaga Speed', 'Sneaker cao cấp Balenciaga Speed', 15000000, 2, 'Balenciaga', 'Nam', '40-44', 'Đen', 'Giày thể thao cao cấp'),
+('SP011', 'Giày Converse Chuck Taylor', 'Giày thể thao bình dân Converse', 950000, 25, 'Converse', 'Unisex', '36-44', 'Trắng', 'Giày thể thao'),
+('SP012', 'Giày New Balance 574', 'Giày chạy bộ bình dân New Balance', 1200000, 10, 'New Balance', 'Nam', '39-43', 'Xám', 'Giày thể thao'),
+('SP013', 'Giày Prada Cloudbust', 'Giày cao cấp Prada Cloudbust', 12500000, 3, 'Prada', 'Nữ', '36-40', 'Đen', 'Giày thời trang cao cấp'),
+('SP014', 'Dép Nike Kawa', 'Dép thể thao Nike giá bình dân', 350000, 30, 'Nike', 'Unisex', '36-44', 'Đen', 'Dép thể thao'),
+('SP015', 'Giày Reebok Classic', 'Giày thể thao bình dân Reebok', 1000000, 20, 'Reebok', 'Nam', '39-43', 'Trắng', 'Giày thể thao'),
+('SP016', 'Giày Dior B23', 'Giày cao cấp Dior B23', 14000000, 2, 'Dior', 'Unisex', '37-44', 'Trắng', 'Giày thời trang cao cấp'),
+('SP017', 'Dép Adidas Adilette', 'Dép thể thao Adidas giá bình dân', 400000, 25, 'Adidas', 'Unisex', '36-44', 'Xanh', 'Dép thể thao'),
+('SP018', 'Giày Jordan Air 1', 'Giày cao cấp Jordan Air 1', 9000000, 5, 'Jordan', 'Nam', '40-44', 'Đỏ', 'Giày thể thao cao cấp');
 
 -- 7️⃣ Dữ liệu mẫu: đơn hàng và chi tiết
 INSERT INTO orders (customer_name, total)

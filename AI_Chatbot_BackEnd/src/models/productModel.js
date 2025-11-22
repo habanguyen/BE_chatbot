@@ -96,10 +96,21 @@ export async function deleteProductInDB(id) {
 // ================================
 export async function searchProductsInDB(filters) {
     try {
-        const { name, brand, gender, size, color, category, minPrice, maxPrice } = filters;
+        const { name, brand, gender, size, color, category, minPrice, maxPrice, keyword } = filters;
 
         const conditions = [];
         const values = [];
+
+        // KEYWORD search: if keyword provided, split into words and match any term in name OR description
+        if (keyword) {
+            const keywords = keyword.split(/\s+/).filter(Boolean);
+            if (keywords.length > 0) {
+                const keywordConditions = keywords.map(() => `(name LIKE ? OR description LIKE ? )`).join(" OR ");
+                conditions.push(`(${keywordConditions})`);
+                const keywordValues = keywords.flatMap(k => [`%${k}%`, `%${k}%`]);
+                values.push(...keywordValues);
+            }
+        }
 
         // Ghép điều kiện linh hoạt
         if (name) {
@@ -138,7 +149,12 @@ export async function searchProductsInDB(filters) {
         const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
         const query = `SELECT * FROM products ${whereClause} ORDER BY price ASC`;
 
+        // debug logs to help troubleshooting
+        console.log('[productModel] search query:', query);
+        console.log('[productModel] values:', values);
+
         const [rows] = await pool.query(query, values);
+        console.log('[productModel] rows returned:', rows.length);
         return rows;
     } catch (error) {
         console.error("Lỗi searchProductsInDB:", error.message);
