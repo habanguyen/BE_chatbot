@@ -88,9 +88,6 @@
   max-width: calc(100% - 44px);
 }
 
-.msg-bubble-user {
-  /* kept if later needed */
-}
 
 .msg-system {
   align-self: center;
