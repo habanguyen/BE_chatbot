@@ -99,8 +99,8 @@ export default function ChatbotWidget({ backendUrl = "/api/chatbot", defaultOpen
 // tiny default avatar (robot) as data URL
 const defaultAvatar = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24'><rect rx='4' width='24' height='24' fill='%230b79d0'/><circle cx='8.5' cy='9' r='1.2' fill='%23fff'/><circle cx='15.5' cy='9' r='1.2' fill='%23fff'/><rect x='9' y='14' width='6' height='1.6' rx='0.8' fill='%23fff'/></svg>`;
 
-// Ưu tiên: avatarUrl (props) → public `/avatar_chatbot.png` → fallback SVG
-const avatar = avatarUrl || '/avatar_chatbot.jpg' || defaultAvatar;
+// Avatar priority: avatarUrl (props) → public `/avatar_chatbot.svg` → public `/avatar_chatbot.png` → inline SVG fallback
+const avatar = avatarUrl || '/avatar_chatbot.svg' || '/avatar_chatbot.png' || defaultAvatar;
 
 
   return (

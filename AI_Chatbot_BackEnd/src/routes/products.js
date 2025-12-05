@@ -24,6 +24,16 @@ const router = express.Router();
 router.get("/", getAllProducts);
 
 //  Lấy chi tiết 1 sản phẩm theo ID
+// NOTE: đặt các route cụ thể (search) trước route động 
+// để tránh '/search/...' bị bắt bởi '/:id'
+
+//   Tìm kiếm sản phẩm qua query string
+router.get("/search/filter", searchProducts);
+
+//   Tìm kiếm bằng ngôn ngữ tự nhiên
+router.post("/search/ask", askProductSuggestion);
+
+//  Lấy chi tiết 1 sản phẩm theo ID
 router.get("/:id", getProductById);
 
 //  Thêm sản phẩm mới
@@ -37,12 +47,7 @@ router.delete("/:id", deleteProduct);
 
 // ================================
 //  ROUTE TÌM KIẾM
+// (đã đặt trước route động `/ :id`)
 // ================================
-
-//   Tìm kiếm sản phẩm qua query string
-router.get("/search/filter", searchProducts);
-
-//   Tìm kiếm bằng ngôn ngữ tự nhiên
-router.post("/search/ask", askProductSuggestion);
 
 export default router;

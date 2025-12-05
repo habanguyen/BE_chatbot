@@ -19,14 +19,17 @@ export function analyzeMessage(message) {
 
   // --------------------------------------------
   // 1. Small talk
+  // Remove diacritics for better matching
   // --------------------------------------------
-  if (/(chào|hi|hello)/.test(text)) {
+  const textNormalized = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  if (/(chao|hi|hello)/.test(textNormalized)) {
     return { intent: "greeting" };
   }
-  if (/cám ơn|thank/.test(text)) {
+  if (/(cam on|thank)/.test(textNormalized)) {
     return { intent: "thanks" };
   }
-  if (/tạm biệt|bye/.test(text)) {
+  if (/(tam biet|bye)/.test(textNormalized)) {
     return { intent: "goodbye" };
   }
 

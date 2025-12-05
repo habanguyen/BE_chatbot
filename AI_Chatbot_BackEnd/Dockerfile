@@ -10,6 +10,7 @@ WORKDIR /usr/src/app
 
 # 3️⃣ Copy file cấu hình vào container
 COPY package*.json ./
+COPY .env ./
 
 # 4️⃣ Cài đặt dependencies
 RUN npm install

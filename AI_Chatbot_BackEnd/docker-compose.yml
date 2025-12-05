@@ -27,6 +27,7 @@ services:
       DB_USER: root
       DB_PASSWORD: hanb123123@
       DB_NAME: shopdb
+      HUGGINGFACE_API_KEY: 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
     volumes:
       - .:/usr/src/app
     command: ["npm", "start"]

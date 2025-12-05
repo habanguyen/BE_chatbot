@@ -1,6 +1,6 @@
 // ==========================================
 // src/controllers/chatbotController.js
-// Controller xử lý logic chính của Chatbot
+// HYBRID CHATBOT (Rule-based NLP + ChatGPT AI)
 // ==========================================
 
 import { analyzeMessage } from "../utils/nlp.js";
@@ -18,159 +18,160 @@ export async function handleChat(req, res) {
   try {
     const { message, userInfo = {}, userId } = req.body;
 
-    // 1) Validate input
     if (!message || typeof message !== "string") {
       return res.status(400).json({
         error: "Thiếu trường 'message' (string).",
-        example: { 
-          message: "tìm giày Nike dưới 2 triệu",
-          userInfo: { height: 170, weight: 65 }
-        }
       });
     }
 
-    // 2) Đảm bảo user tồn tại trong DB
+    // USER
     const uid = await saveUserIfNotExists(userId || "guest", userInfo);
 
-    // 3) NLP → intent + entities + filters
+    // NLP → intent
     const nlu = analyzeMessage(message);
 
-    // 4) Lưu lịch sử chat (user → bot)
     await saveChatMessage(uid, "user", message);
 
-    // ==============================
-    // Xử lý theo intent từ NLP
-    // ==============================
     let botReply = "";
     let botData = null;
 
-    switch (nlu.intent) {
-
-      // -----------------------------
-      // LỜI CHÀO (Greeting)
-      // -----------------------------
-      case "greeting": {
-        botReply = "Chào bạn! Mình là trợ lý mua sắm — bạn muốn tìm sản phẩm, tư vấn size, hay xem khuyến mãi?";
-        // provide a small set of quick suggestions in data (optional)
-        botData = [
-          { id: null, name: "Tìm giày Nike", brand: "Nike", category: "Giày thể thao" },
-          { id: null, name: "Tư vấn size", brand: null, category: null },
-          { id: null, name: "Xem khuyến mãi", brand: null, category: null }
-        ];
-        break;
-      }
-
-      // -----------------------------
-      // TÌM SẢN PHẨM
-      // -----------------------------
-      case "find_product": {
-        const filters = nlu.filters || {};
-
-        // merge với userInfo gửi từ FE
-        if (userInfo) {
-          filters.userInfo = {
-            height: userInfo.height,
-            weight: userInfo.weight,
-            gender: userInfo.gender
-          };
-        }
-
-        const products = await searchProductsInDB(filters);
-
-        if (!products || products.length === 0) {
-          botReply =
-            "Mình chưa tìm thấy sản phẩm phù hợp. Bạn mô tả thêm hãng, mức giá hoặc nhu cầu nhé!";
-          break;
-        }
-
-        botReply = `Mình tìm thấy ${products.length} sản phẩm phù hợp, gợi ý một số mẫu:`;
-
-        botData = products.slice(0, 10).map((p) => ({
-          id: p.id,
-          sku: p.sku,
-          name: p.name,
-          brand: p.brand,
-          price: p.price,
-          stock: p.stock || 0,
-          category: p.category,
-        }));
-        break;
-      }
-
-      // -----------------------------
-      // TƯ VẤN SIZE
-      // -----------------------------
-      case "recommend_size": {
-        const { height, weight, gender } = nlu.entities || {};
-
-        const h = height || userInfo.height;
-        const w = weight || userInfo.weight;
-        const g = gender || userInfo.gender || "male";
-
-        if (!h || !w) {
-          botReply =
-            "Bạn cần cung cấp chiều cao và cân nặng. Ví dụ: 'Tôi cao 170cm nặng 68kg'.";
-          break;
-        }
-
-        const size = recommendShoeSize(h, w, g);
-        botReply = `Với chiều cao ${h}cm và cân nặng ${w}kg, size phù hợp là: ${size}`;
-        break;
-      }
-
-      // -----------------------------
-      // KIỂM TRA KHUYẾN MÃI
-      // -----------------------------
-      case "check_discount": {
-        botReply =
-          "Hiện tại shop đang giảm 10% cho một số mẫu sneaker. Bạn muốn tìm giảm giá theo hãng hoặc mức giá nào?";
-        break;
-      }
-
-      // -----------------------------
-      // LẤY CHI TIẾT SẢN PHẨM
-      // -----------------------------
-      case "get_product_detail": {
-        const { productId, sku } = nlu.entities || {};
-
-        if (!productId && !sku) {
-          botReply = "Bạn muốn xem chi tiết sản phẩm nào? (id hoặc sku)";
-          break;
-        }
-
-        let product = null;
-
-        if (productId) product = await getProductByIdFromDB(productId);
-        if (!product && sku) {
-          const rows = await searchProductsInDB({ sku });
-          if (rows.length) product = rows[0];
-        }
-
-        if (!product) {
-          botReply = "Không tìm thấy sản phẩm.";
-        } else {
-          botReply = `Chi tiết sản phẩm: ${product.name}`;
-          botData = product;
-        }
-        break;
-      }
-
-      // -----------------------------
-      // INTENT KHÔNG XỬ LÝ ĐƯỢC
-      // -----------------------------
-      default:
-        botReply =
-          "Mình chưa hiểu câu hỏi. Bạn có thể thử hỏi: 'Tìm giày Nike dưới 2 triệu' hoặc 'Tư vấn size cho tôi cao 170 nặng 68'.";
+    // ==============================
+    // ❗ 1. Xử lý SMALL TALK → Đưa cho AI
+    // ==============================
+    if (["greeting", "thanks", "goodbye"].includes(nlu.intent)) {
+      botReply = await askGPT(message);
+      await saveChatMessage(uid, "bot", botReply);
+      return res.json({ reply: botReply });
     }
 
-    // 5) lưu câu trả lời của bot vào lịch sử chat
+    // ==============================
+    // ❗ 2. Intent: FIND PRODUCT
+    // ==============================
+    if (nlu.intent === "find_product") {
+      const filters = nlu.filters || {};
+
+      if (userInfo) {
+        filters.userInfo = {
+          height: userInfo.height,
+          weight: userInfo.weight,
+          gender: userInfo.gender,
+        };
+      }
+
+      const products = await searchProductsInDB(filters);
+
+      if (!products || products.length === 0) {
+        // Không tìm được sản phẩm - kiểm tra xem có phải thực sự là câu hỏi về sản phẩm không
+        const textLower = (message || "").toLowerCase();
+        const hasProductKeyword = /giay|shoe|sneaker|boots|sandal|adidas|nike|puma|converse|vans|reebok|brand|sku|size|price/.test(textLower);
+        
+        if (!hasProductKeyword) {
+          // Không phải câu hỏi về sản phẩm → gọi askGPT
+          botReply = await askGPT(message);
+          await saveChatMessage(uid, "bot", botReply);
+          return res.json({ reply: botReply });
+        }
+        
+        // Là câu hỏi về sản phẩm nhưng chưa tìm thấy
+        botReply =
+          "Mình chưa tìm thấy sản phẩm phù hợp. Bạn mô tả thêm hãng, mức giá hoặc nhu cầu nhé!";
+        await saveChatMessage(uid, "bot", botReply);
+        return res.json({ reply: botReply });
+      }
+
+      botReply = `Mình tìm thấy ${products.length} sản phẩm phù hợp, gợi ý như sau:`;
+
+      botData = products.slice(0, 10).map((p) => ({
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        stock: p.stock || 0,
+        category: p.category,
+      }));
+
+      await saveChatMessage(uid, "bot", botReply);
+
+      return res.json({
+        reply: botReply,
+        data: botData,
+      });
+    }
+
+    // ==============================
+    // ❗ 3. Intent: recommend_size
+    // ==============================
+    if (nlu.intent === "recommend_size") {
+      const { height, weight, gender } = nlu.entities || {};
+
+      const h = height || userInfo.height;
+      const w = weight || userInfo.weight;
+      const g = gender || userInfo.gender || "male";
+
+      if (!h || !w) {
+        botReply =
+          "Bạn cần nói rõ chiều cao + cân nặng. Ví dụ: 'tôi cao 170 nặng 68'.";
+        await saveChatMessage(uid, "bot", botReply);
+        return res.json({ reply: botReply });
+      }
+
+      const size = recommendShoeSize(h, w, g);
+      botReply = `Với chiều cao ${h}cm và cân nặng ${w}kg, size phù hợp là: ${size}`;
+
+      await saveChatMessage(uid, "bot", botReply);
+      return res.json({ reply: botReply });
+    }
+
+    // ==============================
+    // ❗ 4. Intent: get_product_detail
+    // ==============================
+    if (nlu.intent === "get_product_detail") {
+      const { productId, sku } = nlu.entities || {};
+
+      let product = null;
+
+      if (productId) product = await getProductByIdFromDB(productId);
+      if (!product && sku) {
+        const found = await searchProductsInDB({ sku });
+        if (found.length) product = found[0];
+      }
+
+      if (!product) {
+        botReply = "Không tìm thấy sản phẩm.";
+      } else {
+        botReply = `Chi tiết sản phẩm: ${product.name}`;
+        botData = product;
+      }
+
+      await saveChatMessage(uid, "bot", botReply);
+
+      return res.json({
+        reply: botReply,
+        data: botData,
+      });
+    }
+
+    // ==============================
+    // ❗ 5. Intent: check_discount
+    // ==============================
+    if (nlu.intent === "check_discount") {
+      botReply = "Shop hiện đang giảm 10% cho một số mẫu sneaker hot. Bạn muốn xem theo hãng hay theo giá ạ?";
+      await saveChatMessage(uid, "bot", botReply);
+      return res.json({ reply: botReply });
+    }
+
+    // ==============================
+    // ❗ 6. Không hiểu → đưa cho ChatGPT xử lý
+    // ==============================
+    botReply = await askGPT(message);
+
     await saveChatMessage(uid, "bot", botReply);
 
-    // 6) trả về client
     return res.json({
       reply: botReply,
-      data: botData,
     });
+
   } catch (err) {
     console.error("Chatbot error:", err);
     return res.status(500).json({ error: "Lỗi server khi xử lý chatbot" });
@@ -178,7 +179,61 @@ export async function handleChat(req, res) {
 }
 
 // ==============================
-// HÀM TƯ VẤN SIZE
+// Hàm trả lời thông minh (rule-based fallback)
+// Xử lý cả câu hỏi về sản phẩm và ngoài lề
+// ==============================
+async function askGPT(message) {
+  const text = (message || "").toLowerCase().trim();
+  const textNorm = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  // ===== SMALL-TALK =====
+  if (/(chao|hi|hello)/.test(textNorm)) {
+    return "Chào bạn! 👋 Mình là trợ lý tư vấn giày. Bạn cần tìm giày nào hôm nay? (Nike, Adidas, Puma...)";
+  }
+  if (/(cam on|thank)/.test(textNorm)) {
+    return "Không có gì! 😊 Nếu còn câu hỏi nào về giày, hãy cứ hỏi nhé.";
+  }
+  if (/(tam biet|bye)/.test(textNorm)) {
+    return "Tạm biệt bạn! 👋 Chúc bạn mua được giày ưng ý. Hẹn gặp lại!";
+  }
+  
+  // ===== WEATHER / TIME / GENERAL KNOWLEDGE =====
+  if (/(thoi tiet|weather|mua)/.test(textNorm)) {
+    return "Để biết thời tiết chính xác, bạn nên check app thời tiết hoặc web! 😊 Còn mình focus vào tư vấn giày thôi. Bạn cần tìm giày không?";
+  }
+  if (/(may man|trung thuong|xo so)/.test(textNorm)) {
+    return "Mình không có thông tin về điều này! 😄 Nhưng nếu bạn mua giày ở shop mình, chắc bạn sẽ cảm thấy may mắn vì tìm được đôi giày đẹp! 👟";
+  }
+  if (/(hom nay|hom qua|ngay mai|gio may)/.test(textNorm)) {
+    return "Mình không theo dõi thời gian như vậy, nhưng shop mình mở cửa hàng ngày để bạn mua giày! 😊 Cần tư vấn gì không?";
+  }
+  
+  // ===== OPINION QUESTIONS =====
+  if (/(giay nao|san pham nao)/.test(textNorm) && /(tot|dep|chat luong|recommend|nen)/.test(textNorm)) {
+    return "Nike và Adidas là hai thương hiệu uy tín, chất lượng rất tốt. Bạn thích style nào? (năng động, trẻ trung, lịch sự...)";
+  }
+  
+  // ===== GENERAL FEEDBACK ABOUT SHOP =====
+  if (/(chat luong|gia ca|the nao|sao|nhieu tien|bao nhieu)/.test(textNorm)) {
+    return "Shop mình cung cấp những đôi giày chính hãng, chất lượng tốt với giá cạnh tranh. Bạn tìm giày với mục đích gì nhé? (chạy bộ, đi học, dạo phố...)";
+  }
+  
+  // ===== SHOP INFO =====
+  if (/(shop o dau|dia chi|gio mo cua|lien he|sdt|phone)/.test(textNorm)) {
+    return "Shop mình online nên bạn có thể đặt hàng qua app này! 🛍️ Chúng mình giao hàng nhanh chóng. Cần tìm giày nào không?";
+  }
+  
+  // ===== RANDOM CHAT / JOKE =====
+  if (/(tro choi|tro chuyen|ban la ai|ten ban la gi)/.test(textNorm)) {
+    return "Mình là Chatbot tư vấn giày! 🤖 Chuyên nghiệp, thân thiện và luôn sẵn lòng giúp bạn tìm đôi giày hoàn hảo. Bạn muốn tìm giày gì?";
+  }
+  
+  // ===== DEFAULT FALLBACK =====
+  return "Haha, câu hỏi hay đấy! 😄 Nhưng mình chuyên tư vấn giày, còn vấn đề khác thì bạn hỏi người khác nhé. Còn về giày, mình giúp được gì cho bạn? 👟";
+}
+
+// ==============================
+// Hàm tư vấn size cũ – giữ nguyên
 // ==============================
 function recommendShoeSize(heightCm, weightKg, gender) {
   const h = Number(heightCm);
