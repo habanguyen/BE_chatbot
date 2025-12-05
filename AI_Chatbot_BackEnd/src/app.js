@@ -32,7 +32,9 @@ app.use(cors({
     // allow non-browser requests (curl, server-side) where origin is undefined
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+    console.warn('[CORS] Denied origin:', origin);
+    // signal not allowed (do not throw) — browser will block when Access-Control-Allow-Origin missing
+    return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

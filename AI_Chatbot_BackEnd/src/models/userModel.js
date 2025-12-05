@@ -63,7 +63,14 @@ const UserModel = {
   // Lưu sở thích khách hàng (brand, category, price,...)
   async savePreferences(sessionId, prefs) {
     const user = await this.getOrCreateUser(sessionId);
-    const old = JSON.parse(user.preferences || "{}");
+    let old = {};
+    try {
+      const raw = user && user.preferences !== undefined && user.preferences !== null ? user.preferences : "{}";
+      if (typeof raw === 'string') old = raw.trim() === "" ? {} : JSON.parse(raw);
+      else if (typeof raw === 'object') old = raw;
+    } catch (e) {
+      old = {};
+    }
 
     const updated = {
       ...old,
